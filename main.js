@@ -3,13 +3,17 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
+import { RGBShiftShader } from "three/examples/jsm/shaders/RGBShiftShader.js";
 
 // Scene
 const scene = new THREE.Scene();
 
 // Camera
 const camera = new THREE.PerspectiveCamera(
-  75,
+  25,
   window.innerWidth / window.innerHeight,
   0.1,
   1000
@@ -31,7 +35,7 @@ controls.enableDamping = true; // Enable damping (inertia)
 // HDRI Loader
 const rgbeLoader = new RGBELoader();
 rgbeLoader.load(
-  './pond_bridge_night_1k.hdr', // Replace with the path to your HDRI file
+  "./pond_bridge_night_1k.hdr", // Replace with the path to your HDRI file
   (texture) => {
     texture.mapping = THREE.EquirectangularReflectionMapping;
     scene.environment = texture;
@@ -39,7 +43,7 @@ rgbeLoader.load(
   },
   undefined,
   function (error) {
-    console.error('An error occurred loading the HDRI:', error);
+    console.error("An error occurred loading the HDRI:", error);
   }
 );
 
@@ -57,6 +61,15 @@ loader.load(
   }
 );
 
+// Post-processing setup
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+
+// RGB Shift Shader Pass
+const rgbShiftPass = new ShaderPass(RGBShiftShader);
+rgbShiftPass.uniforms["amount"].value = 0.0035; // Adjust the amount of RGB shift
+composer.addPass(rgbShiftPass);
+
 // Animation Loop
 function animate() {
   window.requestAnimationFrame(animate); // Loop the render process
@@ -64,7 +77,8 @@ function animate() {
   // Update controls
   controls.update();
 
-  renderer.render(scene, camera);
+  // Render the scene with post-processing
+  composer.render();
 }
 
 // Resize Handler to adjust canvas size on window resize
@@ -76,6 +90,9 @@ window.addEventListener("resize", () => {
   // Update renderer size
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  // Update composer size
+  composer.setSize(window.innerWidth, window.innerHeight);
 });
 
 // Start animation
